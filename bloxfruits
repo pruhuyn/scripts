@@ -1,0 +1,128 @@
+-- Получаем необходимые сервисы
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+-- Локальный игрок
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Получаем OrionLib
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/pruhuyn/mains/refs/heads/main/pruhlavxyecoc')))()
+
+OrionLib:MakeNotification({
+    Name = "Blox Fruits",
+    Content = "Добро пожаловать",
+    Image = "rbxassetid://4483345998",
+    Time = 4
+})
+
+-- Создание окна
+local Window = OrionLib:MakeWindow({Name = "Blox Fruits", HidePremium = false, SaveConfig = true, ConfigFolder = "Orion"})
+
+-- Секция "Chest Auto-farm"
+local BloxFruitsTab = Window:MakeTab({
+    Name = "Chest Farm",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local BloxFruitsSection = BloxFruitsTab:AddSection({
+    Name = "Chest Auto-farm"
+})
+
+-- Переменные для управления
+local autoFarmEnabled = false
+local teleportTime = 2 -- время телепортации
+local teleportDelay = 1 -- задержка между телепортациями
+
+-- Список сундуков (SilverChest, GoldChest, DiamondChest)
+local chestModels = workspace:FindFirstChild("ChestModels")
+local chestNames = {"SilverChest", "GoldChest", "DiamondChest"}
+local chestPositions = {}
+
+-- Функция для обновления списка сундуков
+local function updateChestPositions()
+    chestPositions = {}
+    if chestModels then
+        for _, chestName in ipairs(chestNames) do
+            for _, obj in ipairs(chestModels:GetChildren()) do
+                if obj.Name == chestName and obj:IsA("BasePart") then
+                    table.insert(chestPositions, obj)
+                end
+            end
+        end
+    end
+end
+
+-- Функция для интерполяции позиции
+local function teleportToChest(targetChest)
+    if humanoidRootPart and targetChest then
+        local tweenInfo = TweenInfo.new(
+            teleportTime,
+            Enum.EasingStyle.Linear,
+            Enum.EasingDirection.InOut
+        )
+
+        local goal = {Position = targetChest.Position}
+        local tween = TweenService:Create(humanoidRootPart, tweenInfo, goal)
+        tween:Play()
+        tween.Completed:Wait()
+    end
+end
+
+-- Функция автофарма
+local function autoFarm()
+    while autoFarmEnabled do
+        updateChestPositions() -- Обновляем список сундуков
+        for _, chest in ipairs(chestPositions) do
+            if not autoFarmEnabled then break end -- Проверяем, включён ли автофарм
+            if chest and chest:IsDescendantOf(workspace) then -- Проверяем, существует ли сундук
+                teleportToChest(chest)
+                wait(teleportDelay) -- Задержка между телепортациями
+            else
+                print("Сундук не найден или был удалён.")
+            end
+        end
+        wait(0.1) -- Небольшая задержка, чтобы цикл не перегружал систему
+    end
+end
+
+-- Переключатель для автофарма
+BloxFruitsSection:AddToggle({
+    Name = "Включить Chest Auto-farm",
+    Default = false,
+    Callback = function(state)
+        autoFarmEnabled = state
+        if state then
+            autoFarm()
+        end
+    end
+})
+
+-- Слайдер для времени телепортации
+BloxFruitsSection:AddSlider({
+    Name = "Время телепортации",
+    Min = 1,
+    Max = 5,
+    Default = 2,
+    Increment = 0.1,
+    Callback = function(value)
+        teleportTime = value
+    end
+})
+
+-- Слайдер для задержки между телепортациями
+BloxFruitsSection:AddSlider({
+    Name = "Задержка между телепортациями",
+    Min = 0.5,
+    Max = 3,
+    Default = 1,
+    Increment = 0.1,
+    Callback = function(value)
+        teleportDelay = value
+    end
+})
+
+-- Инициализация GUI
+OrionLib:Init()
