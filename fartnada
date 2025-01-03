@@ -1,0 +1,138 @@
+-- Получаем необходимые сервисы
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local isTeleportActive = false -- Флаг для активации функции телепортации
+local teleportDuration = 1 -- Длительность анимации по умолчанию
+local teleportDelay = 0.5 -- Задержка между телепортациями
+
+-- Папки для поиска объектов
+local foldersToSearch = {
+    Workspace:FindFirstChild("BeanHolder"),
+    Workspace:FindFirstChild("BurritoHolder"),
+    Workspace:FindFirstChild("CabbageHolder"),
+}
+
+-- Функция для получения всех объектов из указанных папок
+local function getAllTargets()
+    local targets = {}
+    for _, folder in ipairs(foldersToSearch) do
+        if folder then
+            for _, obj in ipairs(folder:GetChildren()) do
+                if obj:IsA("Model") and obj:FindFirstChild("HumanoidRootPart") then
+                    table.insert(targets, obj)
+                end
+            end
+        end
+    end
+    return targets
+end
+
+-- Функция для плавной телепортации
+local function tweenToTarget(targetPosition, duration)
+    if humanoidRootPart then
+        local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(targetPosition)})
+        tween:Play()
+        tween.Completed:Wait() -- Дожидаемся завершения анимации перед следующим действием
+    else
+        print("Ошибка: Отсутствует HumanoidRootPart у персонажа")
+    end
+end
+
+-- Функция для начала телепортации
+local function startTeleportation()
+    while isTeleportActive do
+        local targets = getAllTargets()
+        if #targets == 0 then
+            print("Нет целей для телепортации")
+            break
+        end
+        for _, target in ipairs(targets) do
+            if character and humanoidRootPart and target and target:FindFirstChild("HumanoidRootPart") then
+                local targetPosition = target.HumanoidRootPart.Position
+                tweenToTarget(targetPosition, teleportDuration)
+                wait(teleportDelay)
+                if not isTeleportActive then break end
+            else
+                print("Ошибка: Отсутствует HumanoidRootPart у игрока или цели")
+            end
+        end
+    end
+end
+
+-- Обновляем ссылки на персонажа и его компоненты после респауна
+local function onCharacterAdded(newCharacter)
+    character = newCharacter
+    humanoidRootPart = newCharacter:WaitForChild("HumanoidRootPart")
+    print("Новый персонаж загружен, скрипт продолжает работу")
+end
+
+-- Подключаем обработчик для перезагрузки карты и респауна персонажа
+player.CharacterAdded:Connect(onCharacterAdded)
+
+-- Подключаем обработчик к событию перезагрузки карты
+game:GetService("Players").PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(onCharacterAdded)
+end)
+
+-- Создание GUI
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/pruhuyn/mains/refs/heads/main/pruhlavxyecoc')))()
+local Window = OrionLib:MakeWindow({Name = "Pruh Client", HidePremium = false, SaveConfig = true, ConfigFolder = "Orion"})
+
+local TeleportTab = Window:MakeTab({
+    Name = "AutoFarm",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+local TeleportSection = TeleportTab:AddSection({
+    Name = "AutoFarm"
+})
+
+-- Переключатель для включения/выключения функции телепортации
+TeleportSection:AddToggle({
+    Name = "Включить автофарм",
+    Default = false,
+    Callback = function(Value)
+        isTeleportActive = Value
+        if isTeleportActive then
+            coroutine.wrap(startTeleportation)()
+        end
+    end
+})
+
+-- Слайдер для настройки длительности анимации
+TeleportSection:AddSlider({
+    Name = "Длительность телепортации",
+    Min = 0.5,
+    Max = 5,
+    Default = 1,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.1,
+    ValueName = "сек.",
+    Callback = function(Value)
+        teleportDuration = Value
+    end
+})
+
+-- Слайдер для настройки задержки между телепортациями
+TeleportSection:AddSlider({
+    Name = "Cooldown",
+    Min = 0.4,
+    Max = 5,
+    Default = 0.5,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 0.1,
+    ValueName = "сек.",
+    Callback = function(Value)
+        teleportDelay = Value
+    end
+})
+
+OrionLib:Init()
