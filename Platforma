@@ -1,0 +1,71 @@
+local player = game.Players.LocalPlayer
+        local platform = nil -- Переменная для платформы
+        local platformActive = false -- Флаг для активации платформы
+        local platformOffset = -3 -- Начальная высота платформы относительно игрока
+
+        -- Функция для создания платформы под игроком
+        local function createPlatform()
+            if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+                return
+            end
+
+            -- Удаляем старую платформу, если она есть
+            if platform then
+                platform:Destroy()
+            end
+
+            -- Создаем новую платформу
+            platform = Instance.new("Part")
+            platform.Size = Vector3.new(5, 1, 5) -- Размер платформы
+            platform.Position = player.Character.HumanoidRootPart.Position + Vector3.new(0, platformOffset, 0) -- Расположение под игроком
+            platform.Anchored = true -- Фиксируем платформу
+            platform.CanCollide = true -- Платформа имеет физические свойства
+            platform.Transparency = 0.01 -- Полупрозрачная для наглядности
+            platform.Parent = workspace -- Добавляем в пространство
+
+            -- Следим за движением персонажа
+            game:GetService("RunService").RenderStepped:Connect(function()
+                if platformActive and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local humanoidRootPart = player.Character.HumanoidRootPart
+                    platform.Position = humanoidRootPart.Position + Vector3.new(0, platformOffset, 0) -- Следуем за персонажем
+                end
+            end)
+        end
+
+        -- Удаляем платформу после смерти игрока
+        player.CharacterAdded:Connect(function()
+            if platform then
+                platform:Destroy()
+                platform = nil -- Сбрасываем переменную
+            end
+            platformActive = false -- Платформа отключена
+        end)
+
+        -- Управление активацией платформы
+        local UIS = game:GetService("UserInputService")
+
+        UIS.InputBegan:Connect(function(input)
+            -- Включение/выключение платформы на клавишу Home
+            if input.KeyCode == Enum.KeyCode.Home then
+                if not platformActive then
+                    createPlatform()
+                    platformActive = true
+                else
+                    if platform then
+                        platform:Destroy()
+                        platform = nil -- Удаляем платформу
+                    end
+                    platformActive = false -- Деактивируем платформу
+                end
+            end
+
+            -- Подъем платформы на Insert
+            if input.KeyCode == Enum.KeyCode.Insert and platformActive then
+                platformOffset = platformOffset + 0.5 -- Увеличиваем высоту платформы
+            end
+
+            -- Опускание платформы на L
+            if input.KeyCode == Enum.KeyCode.L and platformActive then
+                platformOffset = platformOffset - 0.5 -- Уменьшаем высоту платформы
+            end
+        end)
